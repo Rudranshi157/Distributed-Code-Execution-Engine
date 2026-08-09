@@ -1,17 +1,19 @@
 const express = require("express");
-const execute = require("./execute");
+const executionQueue = require("./bullmq/queue");
 const app = express();
-const formatResult = require("./utils/formatResult");
 
 app.use(express.json());
+
 
 app.get("/", (req, res) => {
     res.send("Remote Code Runner API");
 });
 
 app.post("/execute", async (req, res) => {
-       console.log(req.body);
-    const {language, code, input} = req.body;
+   
+    // console.log("Content-Type:", req.headers["content-type"]);
+    // console.log("Body:", req.body);
+    const {language, code, input} = req.body || {};
 
     if(!language) {
         return res.status(400).json({
@@ -27,35 +29,31 @@ app.post("/execute", async (req, res) => {
     }
 
     try {
-        const output = await execute(language, code, input);
+        
 
-        return res.json(output);
+        const job = await executionQueue.add(
+            "execute-code", 
+            {
+                language,
+                code,
+                input,
+            },{
+                attempts: 3,
+                backoff: {
+                    type: "fixed",
+                    delay: 2000,
+                }
+            }
+        );
+
+        return res.status(202).json({
+            success: true,
+            jobId: job.id,
+            state: "queued"
+        });
 
     }catch (err) {
-        if (err.code === "TLE") {
-            return res.status(408).json(
-                formatResult({
-                    status: "Time Limit Exceeded",
-                    executionTime: err.executionTime,
-                })
-            );
-        }
-
-        if (err.code === "OLE") {
-            return res.status(413).json(
-                formatResult({
-                    status: "Output Limit Exceeded",
-                    executionTime: err.executionTime,
-                })
-            );
-        }
-
-        if(err.message === "Unsupported language"){
-            return res.status(400).json({
-                success: false,
-                error: err.message,
-            });
-        }
+      
         return res.status(500).json({
             success: false,
             error: err.message,
@@ -63,6 +61,28 @@ app.post("/execute", async (req, res) => {
         
     }
 
+});
+
+app.get("/result/:id", async (req, res) => {
+    const jobId = req.params.id;
+    const job = await executionQueue.getJob(jobId);
+    if(!job){
+        return res.status(404).json({
+            success: false,
+            error: "Job not found"
+        });
+    }
+    const state = await job.getState();
+    let data = {
+        jobId,
+        state,
+    }
+    if(state === "completed"){
+        data.result = job.returnvalue;
+    }else if(state === "failed"){
+        data.error = job.failedReason;
+    }
+    return res.json(data);
 });
 
 const PORT = 3000;

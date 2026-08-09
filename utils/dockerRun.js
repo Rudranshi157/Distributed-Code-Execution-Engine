@@ -1,4 +1,6 @@
 const run = require("./run");
+const crypto = require("node:crypto");
+const { execFile } = require("node:child_process");
 
 const dockerRun = async ({
     image, 
@@ -9,11 +11,24 @@ const dockerRun = async ({
     timeout = 5000,
 
 }) => {
-    
+
+    const containerName = `code-runner-${crypto.randomUUID()}`;
+
+    const stopContainer = () => {
+        execFile("docker", ["kill", containerName], (error) => {
+            if (error) {
+                console.error("Failed to stop container:", error.message);
+            }
+        });
+    };
+
     return run(
         "docker",
         [
             "run",
+            "--name",
+            containerName,
+
             "--rm",
             "-i",
 
@@ -44,7 +59,8 @@ const dockerRun = async ({
         ],
         {},
         input,
-        timeout
+        timeout,
+        stopContainer
     );
 }
 

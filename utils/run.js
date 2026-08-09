@@ -3,7 +3,14 @@ const { spawn } = require('node:child_process');
 
 const MAX_OUTPUT_SIZE = 1024 * 1024; // 1 MB
 
-const run = (command, args, options = {}, input = "", timeout = 2000)=> {
+const run = (
+    command,
+    args,
+    options = {},
+    input = "",
+    timeout = 2000,
+    onTimeout = null
+) => {
     const startTime = Date.now();
     return new Promise((resolve, reject) => {
         const child = spawn(command, args, options);
@@ -16,7 +23,12 @@ const run = (command, args, options = {}, input = "", timeout = 2000)=> {
 
         const timer = setTimeout(() => {
             timedOut = true;
+            if(onTimeout){
+                onTimeout();
+            }
+
             child.kill("SIGTERM");
+            
             setTimeout(() => {
                 if (!child.killed)
                     child.kill("SIGKILL");
