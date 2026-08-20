@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const executionQueue = require("./bullmq/queue");
+const executionQueue = require("./queue.js");
 
 const app = express();
 
@@ -16,18 +16,19 @@ app.post("/execute", async (req, res) => {
    
     // console.log("Content-Type:", req.headers["content-type"]);
     // console.log("Body:", req.body);
-    const {language, code, input} = req.body || {};
+    const {language, code, input, clientId} = req.body || {};
 
+    //   console.log("CLIENT ID RECEIVED BY SERVER:", clientId);
     if(!language) {
         return res.status(400).json({
             success: false,
-            error: "Language is required"
+            error: "Language is required",
         });
     }
     if(!code) {
         return res.status(400).json({
             success: false,
-            error: "Code is required"
+            error: "Code is required",
         });
     }
 
@@ -40,6 +41,7 @@ app.post("/execute", async (req, res) => {
                 language,
                 code,
                 input,
+                clientId,
             },{
                 attempts: 3,
                 backoff: {
@@ -52,7 +54,8 @@ app.post("/execute", async (req, res) => {
         return res.status(202).json({
             success: true,
             jobId: job.id,
-            state: "queued"
+            state: "queued",
+            clientId
         });
 
     }catch (err) {
@@ -60,6 +63,7 @@ app.post("/execute", async (req, res) => {
         return res.status(500).json({
             success: false,
             error: err.message,
+            clientId
         });
         
     }

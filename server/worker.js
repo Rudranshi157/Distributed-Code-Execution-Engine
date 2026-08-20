@@ -1,13 +1,24 @@
 const { Worker } = require("bullmq");
-const execute = require("../execute");
+const execute = require("./execute");
+const {redisPublish} = require("./redis");
+const { json } = require("express");
 
 const worker = new Worker(
     "code-execution",
     async (job) => {
 
         console.log(`Started Job ${job.id} `);
-       
-        const {language, code, input} = job.data;
+        console.log(job.data);
+        const {language, code, input, clientId} = job.data;
+        
+        const status = {
+            jobId: job.id,
+            clientId,
+            status: "active"
+        };
+        redisPublish.publish("job-status", JSON.stringify(status) );
+        // console.log(":", language);
+        console.log("Client ID:", clientId);
         console.log(`Language: ${language}`);
 
         try{
@@ -55,12 +66,28 @@ const worker = new Worker(
 worker.on("completed", (job, result) => {
     console.log(`Job ${job.id} completed`);
     console.log("Result:", result);
+    const clientId = job.data.clientId;
+    const status = {
+        jobId: job.id,
+        clientId,
+        status: "completed",
+        result: result
+    };
+    redisPublish.publish("job-status", JSON.stringify(status));
     
 });
 
 worker.on("failed", (job, err) => {
     console.log(`job ${job.id} failed`);
     console.log(err.message);
+    const clientId = job.data.clientId;
+    const status = {
+        jobId: job.id,
+        clientId,
+        status: "failed",
+        error: err.message
+    };
+    redisPublish.publish("job-status", JSON.stringify(status));
 });
 
 console.log("🚀 Worker started");

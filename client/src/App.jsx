@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import CodeEditor from "./components/CodeEditor";
 import InputBox from "./components/InputBox";
 import OutputBox from "./components/OutputBox";
-import { executeCode, pollResult } from "./services/executionApi";
+import { executeCode } from "./services/executionApi";
 
 function App() {
   const [language, setLanguage] = useState("js");
@@ -12,6 +12,52 @@ function App() {
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [status, setStatus] = useState("");
+  
+  const currentJobId = useRef(null);
+  const [clientId, setClientId] = useState(null);
+
+  useEffect(() => {
+    const socket = new WebSocket("ws://localhost:9000");
+
+    socket.onopen = () => {
+      console.log("websocket connection");
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if(data.type === "client-id"){
+        setClientId(data.clientId);
+        return;
+      }
+      if(data.jobId === currentJobId.current){
+        console.log("received", data);
+        if(data.status === "active"){
+          setStatus("active");
+        }else if(data.status === "completed" ){
+          setStatus(data.result.status);
+          if (data.result.success) {
+              setOutput(data.result.stdout);
+          } else {
+              setOutput(data.result.stderr || data.result.status);
+          }
+           setIsRunning(false);
+        }else if(data.status === "failed"){
+          setStatus(data.status);
+           setOutput(data.error);
+           setIsRunning(false);
+           
+          
+        }
+      }
+      
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, []);
+
 
   const runCode = async () => {
     setOutput("");
@@ -19,25 +65,13 @@ function App() {
     setIsRunning(true);
 
     try {
-      const jobId = await executeCode(language, code, input);
+      const jobId = await executeCode(language, code, input, clientId);
+      currentJobId.current  = jobId;
 
-      const result = await pollResult(jobId);
-
-      if (result.state === "completed") {
-        setStatus(result.result.status);
-        if (result.result.success) {
-          setOutput(result.result.stdout);
-        } else {
-          setOutput(result.result.stderr || result.result.status);
-        }
-      }
-      if (result.state === "failed") {
-        setOutput(result.error);
-      }
+   
     } catch (err) {
       console.log(err.message);
       setOutput("Failed to execute code");
-    } finally {
       setIsRunning(false);
     }
   };
@@ -62,6 +96,7 @@ function App() {
         <button onClick={runCode} disabled={isRunning}>
           {isRunning ? "Running..." : "Run Code"}
         </button>
+        <p>Client ID: {clientId}</p>
         <OutputBox output={output} status={status} />
       </main>
     </>
