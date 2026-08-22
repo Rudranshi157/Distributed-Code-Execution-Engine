@@ -1,7 +1,11 @@
+require("dotenv").config();
 const { Worker } = require("bullmq");
 const execute = require("./execute");
 const {redisPublish} = require("./redis");
-const { json } = require("express");
+const Submission = require("./models/Submission");
+const connectDB = require("./config/db.js");
+
+connectDB();
 
 const worker = new Worker(
     "code-execution",
@@ -9,7 +13,7 @@ const worker = new Worker(
 
         console.log(`Started Job ${job.id} `);
         console.log(job.data);
-        const {language, code, input, clientId} = job.data;
+        const {language, code, input, clientId, submissionId} = job.data;
         
         const status = {
             jobId: job.id,
@@ -26,27 +30,66 @@ const worker = new Worker(
 
             console.log(`Finished Job: ${job.id}`);
 
+            await Submission.findByIdAndUpdate(
+                submissionId,
+                {
+                    status: result.success === false ? "failed" : "completed",
+                    output: result.stdout || "",
+                    error: result.stderr || "",
+                    executionTime: result.executionTime || 0
+                }
+            );
+
             return result;
+
         }catch(err){
             if(err.code === "TLE"){
-                return {
+                const result = {
                     success: false,
                     status: "Time Limit Exceeded",
                     executionTime: err.executionTime,
-                }
+                };
+
+                await Submission.findByIdAndUpdate(
+                    submissionId,
+                    {
+                        status: "failed",
+                        error: result.status,
+                        executionTime: result.executionTime || 0
+                    }
+                );
+                return result;
             }
             if(err.code === "OLE"){
-                return {
+                const result = {
                     success: false,
                     status: "Output Limit Exceeded",
                     executionTime: err.executionTime,
                 }
+                await Submission.findByIdAndUpdate(
+                    submissionId,
+                    {
+                        status: "failed",
+                        error: result.status,
+                        executionTime: result.executionTime || 0
+                    }
+                );
+                return result;
             } 
             if (err.message === "Unsupported language") {
-                return {
+                const result = {
                     success: false,
                     status: "Unsupported language"
                 };
+
+                await Submission.findByIdAndUpdate(
+                    submissionId,
+                    {
+                        status: "failed",
+                        error: result.status,
+                    }
+                );
+                return result;
             }
 
             throw err;
