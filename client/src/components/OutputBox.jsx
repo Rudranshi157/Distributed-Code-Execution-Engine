@@ -3,7 +3,7 @@ function OutputBox({ output, status }) {
     <>
         <h2>Output</h2>
         {status && <p className="status">{status}</p>}
-        <textarea value={output} placeholder="Output" readOnly></textarea>;
+        <textarea value={output} placeholder="Output" readOnly></textarea>
     </>
   );
 }

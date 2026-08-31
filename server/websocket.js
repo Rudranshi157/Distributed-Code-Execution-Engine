@@ -25,18 +25,30 @@ wsServer.on("connection", (webSocket) => {
 })
 })
 redisSubscribe.on("message", (channel, msg) =>{
-    if(channel === redis_channel){
-        console.log(channel);
-        console.log(msg);
-        const data = JSON.parse(msg);
-        const webS = clients.get(data.clientId);
-        if(webS){
-            webS.send(msg);
-        
-       
+    if(channel !== redis_channel){
+        return;
     }
-        
+    console.log(channel);
+    console.log(msg);
+    const data = JSON.parse(msg);
+    
+    //Dashboard update message
+    if(data.type === "submission-updated"){
+        for(const webSocket of clients.values()){
+            if(webSocket.readyState === 1){
+                webSocket.send(msg);
+            }
+        }
+        return;
     }
+
+    //Normal execution status msg
+    const webSocket = clients.get(data.clientId);
+
+    if(webSocket && webSocket.readyState === 1){
+        webSocket.send(msg);
+    }
+    
 
 });
 

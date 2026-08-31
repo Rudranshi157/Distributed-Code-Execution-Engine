@@ -5,12 +5,14 @@ const connectDB = require("./config/db.js");
 const dotenv = require("dotenv").config();
 const app = express();
 const authRoutes = require("./routes/auth");
+const submissionRoutes = require("./routes/submission.js");
 const auth = require("./middleware/auth");
 const Submission = require("./models/Submission.js");
 
 app.use(cors());
 app.use(express.json());
 app.use("/auth", authRoutes);
+app.use("/api", submissionRoutes);
 
 connectDB();
 

@@ -117,6 +117,13 @@ worker.on("completed", (job, result) => {
         result: result
     };
     redisPublish.publish("job-status", JSON.stringify(status));
+
+    //Tell dashboard to refresh submission
+    const dashboardUpdate = {
+        type: "submission-updated",
+    };
+    redisPublish.publish("job-status", JSON.stringify(dashboardUpdate));
+   
     
 });
 
@@ -131,6 +138,13 @@ worker.on("failed", (job, err) => {
         error: err.message
     };
     redisPublish.publish("job-status", JSON.stringify(status));
+
+    //Tell dashboard to refresh submission
+    const dashboardUpdate = {
+        type: "submission-updated",
+    };
+    redisPublish.publish("job-status", JSON.stringify(dashboardUpdate));
+   
 });
 
 console.log("🚀 Worker started");

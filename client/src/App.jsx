@@ -4,6 +4,11 @@ import CodeEditor from "./components/CodeEditor";
 import InputBox from "./components/InputBox";
 import OutputBox from "./components/OutputBox";
 import { executeCode } from "./services/executionApi";
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import Dashboard from "./components/Dashboard";
+import Login from "./components/Login";
+import SubmissionDetails from "./components/SubmissionDetails";
+import { useWebSocket } from "./context/WebSocketContext";
 
 function App() {
   const [language, setLanguage] = useState("js");
@@ -14,49 +19,44 @@ function App() {
   const [status, setStatus] = useState("");
   
   const currentJobId = useRef(null);
-  const [clientId, setClientId] = useState(null);
+  const { clientId, lastMessage } = useWebSocket();
 
   useEffect(() => {
-    const socket = new WebSocket("ws://localhost:9000");
+  if (!lastMessage) {
+      return;
+    }
 
-    socket.onopen = () => {
-      console.log("websocket connection");
-    };
+    const data = lastMessage;
 
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    if (data.jobId !== currentJobId.current) {
+      return;
+    }
 
-      if(data.type === "client-id"){
-        setClientId(data.clientId);
-        return;
+    console.log("received", data);
+
+    if (data.status === "active") {
+      setStatus("active");
+    }
+
+    else if (data.status === "completed") {
+      setStatus(data.result.status);
+
+      if (data.result.success) {
+        setOutput(data.result.stdout);
+      } else {
+        setOutput(data.result.stderr || data.result.status);
       }
-      if(data.jobId === currentJobId.current){
-        console.log("received", data);
-        if(data.status === "active"){
-          setStatus("active");
-        }else if(data.status === "completed" ){
-          setStatus(data.result.status);
-          if (data.result.success) {
-              setOutput(data.result.stdout);
-          } else {
-              setOutput(data.result.stderr || data.result.status);
-          }
-           setIsRunning(false);
-        }else if(data.status === "failed"){
-          setStatus(data.status);
-           setOutput(data.error);
-           setIsRunning(false);
-           
-          
-        }
-      }
-      
-    };
 
-    return () => {
-      socket.close();
-    };
-  }, []);
+      setIsRunning(false);
+    }
+
+    else if (data.status === "failed") {
+      setStatus(data.status);
+      setOutput(data.error);
+      setIsRunning(false);
+    }
+
+  }, [lastMessage]);
 
 
   const runCode = async () => {
@@ -78,28 +78,79 @@ function App() {
  
 
   return (
-    <>
-      <header className="header">
-        <h1>Remote Code Runner</h1>
-        <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-          <option value="js">JavaScript</option>
-          <option value="java">Java</option>
-          <option value="python">Python</option>
-          <option value="cpp">C++</option>
-        </select>
-      </header>
-      <main className="container">
-        <h3>code</h3>
-        <CodeEditor language={language} code={code} setCode={setCode} />
-        <h3>Input</h3>
-        <InputBox input={input} setInput={setInput} />
-        <button onClick={runCode} disabled={isRunning}>
-          {isRunning ? "Running..." : "Run Code"}
-        </button>
-        <p>Client ID: {clientId}</p>
-        <OutputBox output={output} status={status} />
-      </main>
-    </>
+    <BrowserRouter>
+      <nav>
+        
+        <Link to="/">Code Runner</Link>
+        {" | "}
+        <Link to="/dashboard">Dashboard</Link>
+      </nav>
+
+      <Routes>
+      <Route
+          path="/login"
+          element={<Login />}
+      />
+     
+        <Route
+          path="/"
+          element={
+            <>
+              <header className="header">
+                <h1>Remote Code Runner</h1>
+
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                >
+                  <option value="js">JavaScript</option>
+                  <option value="java">Java</option>
+                  <option value="python">Python</option>
+                  <option value="cpp">C++</option>
+                </select>
+              </header>
+
+              <main className="container">
+                <h3>Code</h3>
+
+                <CodeEditor
+                  language={language}
+                  code={code}
+                  setCode={setCode}
+                />
+
+                <h3>Input</h3>
+
+                <InputBox
+                  input={input}
+                  setInput={setInput}
+                />
+
+                <button onClick={runCode} disabled={isRunning}>
+                  {isRunning ? "Running..." : "Run Code"}
+                </button>
+
+                <p>Client ID: {clientId}</p>
+
+                <OutputBox
+                  output={output}
+                  status={status}
+                />
+              </main>
+            </>
+          }
+        />
+
+        <Route
+          path="/dashboard"
+          element={<Dashboard />}
+        />
+         <Route
+          path="/dashboard/submission/:id"
+          element={<SubmissionDetails />}
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
