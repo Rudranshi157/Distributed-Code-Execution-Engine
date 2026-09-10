@@ -1,4 +1,7 @@
 require("dotenv").config();
+
+const WORKER_ID = process.env.WORKER_ID || `worker-${process.pid}`
+
 const { Worker } = require("bullmq");
 const execute = require("./execute");
 const judge = require("./judge/judge");
@@ -13,7 +16,7 @@ const worker = new Worker(
     "code-execution",
     async (job) => {
 
-        console.log(`Started Job ${job.id} `);
+        console.log(`[${WORKER_ID}] Started Job ${job.id}`);
         // console.log(job.data);
         const {type, problemId, language, code, input, clientId, submissionId} = job.data;
         
@@ -145,7 +148,7 @@ const worker = new Worker(
 );
 
 worker.on("completed", (job, result) => {
-    console.log(`Job ${job.id} completed`);
+    console.log(`[${WORKER_ID}] Job ${job.id} completed`);
     console.log("Result:", result);
     const clientId = job.data.clientId;
     const status = {
@@ -166,7 +169,7 @@ worker.on("completed", (job, result) => {
 });
 
 worker.on("failed", (job, err) => {
-    console.log(`job ${job.id} failed`);
+    console.log(`[${WORKER_ID}] Job ${job.id} failed`);
     console.log(err.message);
     const clientId = job.data.clientId;
     const status = {
@@ -185,4 +188,4 @@ worker.on("failed", (job, err) => {
    
 });
 
-console.log("🚀 Worker started");
+console.log(`🚀 ${WORKER_ID} started`);
