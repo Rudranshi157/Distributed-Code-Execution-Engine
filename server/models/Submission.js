@@ -33,7 +33,37 @@ const submissionSchema = new mongoose.Schema({
     executionTime: {
         type: Number,
         default: 0
-    }
+    },
+    verdict: {
+        type: String,
+        default: ""
+    },
+    passedTests: {
+        type: Number,
+        default: 0
+    },
+    totalTests: {
+        type: Number,
+        default: 0
+    }, 
+    testResults:[
+        {
+            test: Number,
+            status: String,
+            executionTime: Number
+        }
+    ],
+    hiddenTests: {
+        passed: {
+            type: Number,
+            default: 0
+        },
+        total: {
+            type: Number,
+            default: 0
+        }
+    },
+    
 },{
     timestamps: true
 });

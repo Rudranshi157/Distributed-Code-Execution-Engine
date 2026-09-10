@@ -1,9 +1,11 @@
 require("dotenv").config();
 const { Worker } = require("bullmq");
 const execute = require("./execute");
+const judge = require("./judge/judge");
 const {redisPublish} = require("./redis");
 const Submission = require("./models/Submission");
 const connectDB = require("./config/db.js");
+
 
 connectDB();
 
@@ -12,8 +14,8 @@ const worker = new Worker(
     async (job) => {
 
         console.log(`Started Job ${job.id} `);
-        console.log(job.data);
-        const {language, code, input, clientId, submissionId} = job.data;
+        // console.log(job.data);
+        const {type, problemId, language, code, input, clientId, submissionId} = job.data;
         
         const status = {
             jobId: job.id,
@@ -22,23 +24,59 @@ const worker = new Worker(
         };
         redisPublish.publish("job-status", JSON.stringify(status) );
         // console.log(":", language);
-        console.log("Client ID:", clientId);
-        console.log(`Language: ${language}`);
+        // console.log("Client ID:", clientId);
+        // console.log(`Language: ${language}`);
 
         try{
-            const result = await execute(language, code, input);
+            let result;
+            if(type === "judge"){
+                // console.log(`Judging Job ${job.id}`);
+                // console.log(`Problem ID: ${problemId}`);
 
-            console.log(`Finished Job: ${job.id}`);
+                const judgeResult = await judge({
+                    problemId,
+                    language,
+                    code
+                });
 
-            await Submission.findByIdAndUpdate(
-                submissionId,
-                {
-                    status: result.success === false ? "failed" : "completed",
-                    output: result.stdout || "",
-                    error: result.stderr || "",
-                    executionTime: result.executionTime || 0
-                }
-            );
+                result = {
+                    success: judgeResult.verdict === "Accepted",
+                    status: judgeResult.verdict,
+                    verdict: judgeResult.verdict,
+                    passedTests: judgeResult.passedTests,
+                    totalTests: judgeResult.totalTests,
+                    testResults: judgeResult.publicTestResults,
+                    hiddenTests: judgeResult.hiddenTests
+                };
+                
+                await Submission.findByIdAndUpdate(
+                    submissionId,
+                    {
+                        status: "completed",
+                        verdict: judgeResult.verdict,
+                        passedTests: judgeResult.passedTests,
+                        totalTests: judgeResult.totalTests,
+                        testResults: judgeResult.publicTestResults,
+                        hiddenTests: judgeResult.hiddenTests
+                    }
+                );
+                
+            }else{
+                result = await execute(language, code, input);
+
+                // console.log(`Finished Job: ${job.id}`);
+
+                await Submission.findByIdAndUpdate(
+                    submissionId,
+                    {
+                        status: result.success === false ? "failed" : "completed",
+                        output: result.stdout || "",
+                        error: result.stderr || "",
+                        executionTime: result.executionTime || 0
+                    }
+                );
+            }
+            
 
             return result;
 
