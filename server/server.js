@@ -10,6 +10,9 @@ const submissionRoutes = require("./routes/submission.js");
 const auth = require("./middleware/auth");
 const Submission = require("./models/Submission.js");
 const Problem = require("./models/Problem.js");
+const rateLimitMiddleware = require("./middleware/rateLimiter.js");
+const queueBackpressure = require("./middleware/queueBackpressure.js");
+const { getQueueStats } = require("./utils/queueMonitor");
 
 app.use(cors());
 app.use(express.json({limit: "100kb"}));
@@ -23,8 +26,24 @@ app.get("/", (req, res) => {
     res.send("Remote Code Runner API");
 });
 
+app.get("/health/queue", async (req, res) => {
+    try {
+        const stats = await getQueueStats();
 
-app.post("/execute", auth, async (req, res) => {
+        return res.json(stats);
+
+    } catch (err) {
+        console.error("Queue health check error:", err);
+
+        return res.status(500).json({
+            status: "error",
+            error: "Unable to fetch queue stats"
+        });
+    }
+});
+
+
+app.post("/execute", auth, rateLimitMiddleware, queueBackpressure, async (req, res) => {
    
     // console.log("Content-Type:", req.headers["content-type"]);
     // console.log("Body:", req.body);
@@ -63,7 +82,7 @@ app.post("/execute", auth, async (req, res) => {
                 input,
                 clientId,
                 userId,
-                submissionId    : submission._id
+                submissionId    : submission._id,
             },{
                 attempts: 3,
                 backoff: {
@@ -92,7 +111,7 @@ app.post("/execute", auth, async (req, res) => {
 
 });
 
-app.post("/submit", auth, async (req, res) => {
+app.post("/submit", auth, rateLimitMiddleware, queueBackpressure, async (req, res) => {
     const {problemId, language, code, clientId} = req.body || {};
     // console.log("Authenticated user:", req.user);
     if(!problemId){

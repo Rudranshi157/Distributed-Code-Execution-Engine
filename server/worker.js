@@ -1,6 +1,6 @@
 require("dotenv").config();
 
-const WORKER_ID = process.env.WORKER_ID || `worker-${process.pid}`
+const WORKER_ID = process.env.WORKER_ID || `worker-${process.pid}`;
 
 const { Worker } = require("bullmq");
 const execute = require("./execute");
@@ -16,8 +16,10 @@ const worker = new Worker(
     "code-execution",
     async (job) => {
 
-        console.log(`[${WORKER_ID}] Started Job ${job.id}`);
-        // console.log(job.data);
+        console.log(
+            `[${WORKER_ID}] Started Job ${job.id} | Attempt ${job.attemptsMade + 1}`
+        );
+        
         const {type, problemId, language, code, input, clientId, submissionId} = job.data;
         
         const status = {
@@ -84,6 +86,9 @@ const worker = new Worker(
             return result;
 
         }catch(err){
+
+            // Expected user-code failure.
+            // Return instead of throwing so BullMQ does not retry.
             if(err.code === "TLE"){
                 const result = {
                     success: false,
@@ -133,6 +138,9 @@ const worker = new Worker(
                 return result;
             }
 
+
+            // Unexpected infrastructure/system error.
+            // Throw so BullMQ marks the job as failed and retries it.
             throw err;
         }
 
@@ -168,16 +176,34 @@ worker.on("completed", (job, result) => {
     
 });
 
-worker.on("failed", (job, err) => {
+worker.on("failed", async (job, err) => {
     console.log(`[${WORKER_ID}] Job ${job.id} failed`);
     console.log(err.message);
+
+    if(job.attemptsMade < job.opts.attempts){
+        console.log(`[${WORKER_ID}] Job ${job.id} will be retried`);
+        return;
+    }
+
+    console.log(`[${WORKER_ID}] Job ${job.id} exhausted all retry attempts`);
+
+    await Submission.findByIdAndUpdate(
+        job.data.submissionId,
+        {
+            status: "failed",
+            error: err.message
+        }
+    );
+
     const clientId = job.data.clientId;
+
     const status = {
         jobId: job.id,
         clientId,
         status: "failed",
         error: err.message
     };
+
     redisPublish.publish("job-status", JSON.stringify(status));
 
     //Tell dashboard to refresh submission

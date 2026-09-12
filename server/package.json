@@ -8,6 +8,7 @@
     "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.3",
+    "rate-limiter-flexible": "^11.2.0",
     "redis": "^6.2.0",
     "ws": "^8.21.3"
   }
