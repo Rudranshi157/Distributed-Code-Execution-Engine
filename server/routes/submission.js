@@ -6,7 +6,8 @@ const router = express.Router();
 router.get("/submissions", auth, async (req, res)=> {
     try{
         const userId = req.user.userId;
-        const submissions = await Submission.find({userId});
+        const submissions = await Submission.find({userId})
+         .populate("problemId", "title");
         return res.json({
             success: true,
             submissions
@@ -29,7 +30,7 @@ router.get("/submissions/:id", auth, async (req, res) => {
         const submission = await Submission.findOne({
             _id: submissionId,
             userId: userId
-        });
+        }).populate("problemId", "title");
 
         if (!submission) {
             return res.status(404).json({

@@ -11,5 +11,10 @@
     "rate-limiter-flexible": "^11.2.0",
     "redis": "^6.2.0",
     "ws": "^8.21.3"
-  }
+  },
+  "scripts": {
+  "start": "node server.js",
+  "worker": "node worker.js",
+  "websocket": "node websocket.js"
+}
 }

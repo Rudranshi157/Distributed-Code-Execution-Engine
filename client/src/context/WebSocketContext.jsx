@@ -10,7 +10,7 @@ export function WebSocketProvider({ children }) {
         
         let cancelled = false;
             
-        const socket = new WebSocket("ws://localhost:9000");
+        const socket = new WebSocket(import.meta.env.VITE_WS_URL);
 
         socket.onopen = () => {
             if(cancelled){

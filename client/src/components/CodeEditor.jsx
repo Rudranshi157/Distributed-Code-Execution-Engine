@@ -14,12 +14,17 @@ function CodeEditor({ language, code, setCode }) {
       language={editorLanguage[language]}
       value={code}
       onChange={(value) => setCode(value || "")}
+      theme="vs"
+
       options={{
         automaticLayout: true,
         minimap: { enabled: false },
         fontSize: 14,
         wordWrap: "on",
         scrollBeyondLastLine: false,
+
+        mouseWheelZoom: false,
+        fastScrollSensitivity: 5,
       }}
     />
   );

@@ -1,10 +1,11 @@
+require("dotenv").config();
+
 const { WebSocketServer } = require("ws");
 const { redisSubscribe } = require("./redis");
 const { randomUUID } = require("crypto");
 
 const redis_channel = "job-status";
-const PORT = process.env.PORT ?? 9000;
-
+const PORT = process.env.WS_PORT ?? 9000;
 const clients = new Map();
 
 const wsServer = new WebSocketServer({port : PORT});

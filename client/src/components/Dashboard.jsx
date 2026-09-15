@@ -17,52 +17,55 @@ function Dashboard() {
   const navigate = useNavigate();
   const { lastMessage } = useWebSocket();
 
+  const fetchSubmissions = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const token = localStorage.getItem("token");
 
-const fetchSubmissions = async () => {
-    try{
-        setLoading(true);
-        setError("");
-        const token = localStorage.getItem("token");
-
-        const response = await fetch("http://localhost:3000/api/submissions", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/submissions`, {
         headers: {
-            Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
-        });
-        const data = await response.json();
-        if (!response.ok) {
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
         throw new Error(data.message || "Failed to fetch submissions");
-        }
-        setSubmissions(data.submissions);
-    }catch(error){
-        console.error("Error fetching submissions:", error);
-        setError(error.message);
-    }finally{
-        setLoading(false);
+      }
+
+      setSubmissions(data.submissions);
+    } catch (error) {
+      console.error("Error fetching submissions:", error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
-};
+  };
+
   useEffect(() => {
     fetchSubmissions();
   }, []);
 
-useEffect(() => {
+  useEffect(() => {
     if (!lastMessage) {
-        return;
+      return;
     }
 
     console.log("Dashboard received:", lastMessage);
 
-    if(lastMessage.type === "submission-updated"){
-        fetchSubmissions();
+    if (lastMessage.type === "submission-updated") {
+      fetchSubmissions();
     }
-    
-}, [lastMessage]);
+  }, [lastMessage]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [languageFilter, statusFilter]);
 
   const totalSubmissions = submissions.length;
+
   const completedSubmissions = submissions.filter(
     (submission) => submission.status === "completed",
   ).length;
@@ -77,6 +80,7 @@ useEffect(() => {
       : Math.round((completedSubmissions / totalSubmissions) * 100);
 
   const languageCounts = {};
+
   submissions.forEach((submission) => {
     const language = submission.language;
 
@@ -112,7 +116,9 @@ useEffect(() => {
     return languageMatches && statusMatches;
   });
 
-  const totalPages = Math.ceil(filteredSubmissions.length / submissionsPerPage);
+  const totalPages = Math.ceil(
+    filteredSubmissions.length / submissionsPerPage,
+  );
 
   const startIndex = (currentPage - 1) * submissionsPerPage;
 
@@ -121,75 +127,146 @@ useEffect(() => {
     startIndex + submissionsPerPage,
   );
 
+  const STAT_CARDS = [
+    {
+      label: "Total Submissions",
+      value: totalSubmissions,
+      icon: "inventory_2",
+      accent: "primary",
+    },
+    {
+      label: "Completed",
+      value: completedSubmissions,
+      description: "(Execution completed successfully)",
+      icon: "check_circle",
+      accent: "secondary",
+    },
+    {
+      label: "Failed",
+      value: failedSubmissions,
+      description: "(Backend execution failed)",
+      icon: "cancel",
+      accent: "error",
+    },
+    {
+      label: "Success Rate",
+      value: `${successRate}%`,
+      description: "Backend execution success rate, not code correctness",
+      icon: "trending_up",
+      accent: "primary",
+    },
+    {
+      label: "Most Used Language",
+      value: mostUsedLanguage,
+      icon: "code",
+      accent: "tertiary",
+    },
+    {
+      label: "Avg. Execution Time",
+      value: `${averageExecutionTime} ms`,
+      icon: "speed",
+      accent: "secondary",
+    },
+  ];
+
   return (
-    <>
-      <div className="dashboard-container">
-        <h1>Dashboard</h1>
+    <div className="dc-page">
+      <header className="dc-topbar">
+        <div className="dc-topbar-title">
+          <span className="material-symbols-outlined dc-topbar-icon">
+            dashboard
+          </span>
 
-        <p>Welcome to your Code Runner Dashboard.</p>
+          <div>
+            <h1>Dashboard</h1>
 
-        <section className="dashboard-section">
-          <h2>Statistics</h2>
-
-          <div className="stats-grid">
-            <div className="stat-card">
-                <h3>Total Submissions</h3>
-                <p>{totalSubmissions}</p>
-            </div>
-
-            <div className="stat-card">
-                <h3>Completed</h3>
-                <p>{completedSubmissions}</p>
-            </div>
-
-            <div className="stat-card">
-                <h3>Failed</h3>
-                <p>{failedSubmissions}</p>
-            </div>
-
-            <div className="stat-card">
-                <h3>Success Rate</h3>
-                <p>{successRate}%</p>
-            </div>
-
-            <div className="stat-card">
-                <h3>Most Used Language</h3>
-                <p>{mostUsedLanguage}</p>
-            </div>
-
-            <div className="stat-card">
-                <h3>Avg. Execution Time</h3>
-                <p>{averageExecutionTime} ms</p>
-            </div>
+            <p className="dc-subtitle">
+              Welcome to your Code Runner Dashboard.
+            </p>
+          </div>
         </div>
-        </section>
 
-        <section className="dashboard-section">
-          <h2>Recent Submissions</h2>
-          <div className="filters-container">
+        <div className="dc-live-chip">
+          <span className="dc-live-dot" />
+          Live updates
+        </div>
+      </header>
+
+      <section className="dc-section">
+        <h2 className="dc-section-title">Statistics</h2>
+
+        <div className="dc-stats-grid">
+          {STAT_CARDS.map((card) => (
+            <div className="dc-stat-card" key={card.label}>
+              <div className={`dc-stat-icon dc-accent-${card.accent}`}>
+                <span className="material-symbols-outlined">
+                  {card.icon}
+                </span>
+              </div>
+
+              <div className="dc-stat-body">
+                <h3>{card.label}</h3>
+
+                <p>{card.value}</p>
+
+                {card.description && (
+                  <span className="dc-stat-description">
+                    {card.description}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="dc-section">
+        <div className="dc-section-header">
+          <div>
+            <h2 className="dc-section-title">Recent Submissions</h2>
+
+            <p className="dc-section-description">
+              Status shows backend processing state. Verdict indicates code
+              correctness for problem submissions.
+            </p>
+          </div>
+
+          <div className="dc-filters-container">
             <SubmissionFilters
-                languageFilter={languageFilter}
-                setLanguageFilter={setLanguageFilter}
-                statusFilter={statusFilter}
-                setStatusFilter={setStatusFilter}
+              languageFilter={languageFilter}
+              setLanguageFilter={setLanguageFilter}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
             />
+          </div>
         </div>
 
-          {loading ? (
-                <p>Loading submissions...</p>
-           ) : error ? (
-                <p>{error}</p>
-             ) : submissions.length === 0 ? (
-            <p>No submissions yet.</p>
-          ) : filteredSubmissions.length === 0 ? (
-            <p>No submissions match the selected filters.</p>
-          ) : (
-            <div className="table-container">
-            <table className="submissions-table">
+        {loading ? (
+          <div className="dc-state-message">
+            <span className="dc-spinner" />
+            Loading submissions...
+          </div>
+        ) : error ? (
+          <div className="dc-state-message dc-state-error">
+            <span className="material-symbols-outlined">error</span>
+            {error}
+          </div>
+        ) : submissions.length === 0 ? (
+          <div className="dc-state-message">
+            No submissions yet.
+          </div>
+        ) : filteredSubmissions.length === 0 ? (
+          <div className="dc-state-message">
+            No submissions match the selected filters.
+          </div>
+        ) : (
+          <div className="dc-table-container">
+            <table className="dc-table">
               <thead>
                 <tr>
                   <th>Language</th>
                   <th>Status</th>
+                  <th>Verdict</th>
                   <th>Execution Time</th>
                   <th>Date</th>
                 </tr>
@@ -198,52 +275,78 @@ useEffect(() => {
               <tbody>
                 {currentPageSubmissions.map((submission) => (
                   <tr
-                    className="submission-row"
+                    className="dc-row"
                     key={submission._id}
                     onClick={() =>
-                      navigate(`/dashboard/submission/${submission._id}`, {
-                        state: { submission },
-                      })
+                      navigate(
+                        `/dashboard/submission/${submission._id}`,
+                        {
+                          state: { submission },
+                        },
+                      )
                     }
                   >
-                    <td>{submission.language}</td>
+                    <td>
+                      <span className="dc-lang-pill">
+                        {submission.language}
+                      </span>
+                    </td>
+
                     <td>
                       <StatusBadge status={submission.status} />
                     </td>
-                    <td>{submission.executionTime} ms</td>
                     <td>
-                      {new Date(submission.createdAt).toLocaleDateString()}
+                      <StatusBadge status={submission.verdict} />
+                    </td>
+
+                    <td className="dc-mono">
+                      {submission.executionTime} ms
+                    </td>
+
+                    <td className="dc-mono">
+                      {new Date(
+                        submission.createdAt,
+                      ).toLocaleDateString()}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            </div>
-          )}
-          {filteredSubmissions.length > 0 && (
-            <div className="pagination">
-              <button
-                onClick={() => setCurrentPage(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </button>
+          </div>
+        )}
 
-              <span>
-                Page {currentPage} of {totalPages}
+        {filteredSubmissions.length > 0 && (
+          <div className="dc-pagination">
+            <button
+              className="dc-page-btn"
+              onClick={() => setCurrentPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <span className="material-symbols-outlined">
+                chevron_left
               </span>
+              Previous
+            </button>
 
-              <button
-                onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </section>
-      </div>
-    </>
+            <span className="dc-page-indicator">
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <button
+              className="dc-page-btn dc-page-btn-primary"
+              onClick={() => setCurrentPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Next
+
+              <span className="material-symbols-outlined">
+                chevron_right
+              </span>
+            </button>
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
 

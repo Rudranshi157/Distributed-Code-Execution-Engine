@@ -8,12 +8,13 @@ function SubmissionFilters({
         <div className="submission-filters">
 
             {/* Language Filter */}
-            <div>
-                <label htmlFor="languageFilter">
-                    Language:
+            <div className="dc-filter-group">
+                <label className="dc-filter-label" htmlFor="languageFilter">
+                    Language
                 </label>
 
                 <select
+                    className="dc-filter-select"
                     id="languageFilter"
                     value={languageFilter}
                     onChange={(e) => setLanguageFilter(e.target.value)}
@@ -22,16 +23,18 @@ function SubmissionFilters({
                     <option value="js">JavaScript</option>
                     <option value="python">Python</option>
                     <option value="java">Java</option>
+                    <option value="cpp">C++</option>
                 </select>
             </div>
 
             {/* Status Filter */}
-            <div>
-                <label htmlFor="statusFilter">
-                    Status:
+            <div className="dc-filter-group">
+                <label className="dc-filter-label" htmlFor="statusFilter">
+                    Status
                 </label>
 
                 <select
+                    className="dc-filter-select"
                     id="statusFilter"
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}

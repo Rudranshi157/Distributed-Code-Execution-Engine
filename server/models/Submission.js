@@ -6,6 +6,11 @@ const submissionSchema = new mongoose.Schema({
         ref: "User",
         required: true
     },
+    problemId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Problem",
+        default: null
+    },
     language: {
         type: String,
         required: true

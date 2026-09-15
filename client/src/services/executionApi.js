@@ -1,7 +1,6 @@
-
-const API_URL = "http://localhost:3000"; 
+const API_URL = import.meta.env.VITE_API_URL;
 export const executeCode = async (language, code, input, clientId) => {
-     console.log("Sending to backend:", {
+    console.log("Sending to backend:", {
         language,
         code,
         input,

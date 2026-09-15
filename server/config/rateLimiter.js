@@ -2,8 +2,8 @@ const { Redis } = require("ioredis");
 const { RateLimiterRedis } = require("rate-limiter-flexible");
 
 const rateLimiterRedis = new Redis({
-    host: "localhost",
-    port: 6379,
+    host: process.env.REDIS_HOST,
+    port: Number(process.env.REDIS_PORT),
 });
 
 const rateLimiter = new RateLimiterRedis({
