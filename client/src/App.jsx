@@ -65,6 +65,7 @@ function App() {
   );
 
   const currentJobId = useRef(null);
+  const pendingMessage = useRef(null);
   const { clientId, lastMessage } = useWebSocket();
   const API_URL = import.meta.env.VITE_API_URL;
 
@@ -94,10 +95,17 @@ function App() {
     const data = lastMessage;
 
     if (String(data.jobId) !== String(currentJobId.current)) {
-      return;
-    }
+	    if (
+	        !currentJobId.current &&
+	        (data.status === "completed" || data.status === "failed")
+	    ) {
+	        pendingMessage.current = data;
+	    }
 
-    console.log("received", data);
+	    return;
+	}
+
+	console.log("received", data);
 
     if (data.status === "active") {
       setStatus("active");
@@ -131,7 +139,29 @@ function App() {
 
     try {
       const jobId = await executeCode(language, code, input, clientId);
-      currentJobId.current = jobId;
+	currentJobId.current = jobId;
+
+	if (
+	    pendingMessage.current &&
+	    String(pendingMessage.current.jobId) === String(jobId)
+	) {
+	    const data = pendingMessage.current;
+	    pendingMessage.current = null;
+
+	    setStatus(data.result?.status || data.status);
+
+	    if (data.result?.verdict) {
+	        setJudgeResult(data.result);
+	    } else {
+	        if (data.result?.success) {
+	            setOutput(data.result.stdout);
+	        } else {
+	            setOutput(data.result?.stderr || data.result?.status);
+	        }
+	    }
+
+	    setIsRunning(false);
+	}
     } catch (err) {
       console.log(err.message);
       setOutput("Failed to execute code");
@@ -157,10 +187,26 @@ function App() {
     try {
       const data = await submitCode(problemId, language, code, clientId);
 
-      console.log("Submission created:", data);
+	console.log("Submission created:", data);
 
-      currentJobId.current = data.jobId;
-      setStatus("queued");
+	currentJobId.current = data.jobId;
+	setStatus("queued");
+
+	if (
+	    pendingMessage.current &&
+	    String(pendingMessage.current.jobId) === String(data.jobId)
+	) {
+	    const message = pendingMessage.current;
+	    pendingMessage.current = null;
+
+	    setStatus(message.result?.status || message.status);
+
+	    if (message.result?.verdict) {
+	        setJudgeResult(message.result);
+	    }
+
+	    setIsRunning(false);
+	}
     } catch (err) {
       console.log(err.message);
       setOutput("Failed to submit code");
