@@ -1,6 +1,7 @@
 FROM eclipse-temurin:21-jdk
 
-RUN useradd -m runner
+RUN userdel -r ubuntu && \
+    useradd -m -u 1000 -U runner
 
 USER runner
 

@@ -13,9 +13,26 @@ const Problem = require("./models/Problem.js");
 const rateLimitMiddleware = require("./middleware/rateLimiter.js");
 const queueBackpressure = require("./middleware/queueBackpressure.js");
 const { getQueueStats } = require("./utils/queueMonitor");
+const mongoose = require("mongoose");
+const { redisPublish } = require("./redis");
 
 app.use(cors());
 app.use(express.json({limit: "100kb"}));
+
+app.use((req, res, next) => {
+    const start = Date.now();
+
+    res.on("finish", () => {
+        const duration = Date.now() - start;
+
+        console.log(
+            `[API] ${req.method} ${req.originalUrl} → ${res.statusCode} (${duration}ms)`
+        );
+    });
+
+    next();
+});
+
 app.use("/auth", authRoutes);
 app.use("/api", submissionRoutes);
 app.use("/api/problems", problemRoutes);
@@ -42,6 +59,37 @@ app.get("/health/queue", async (req, res) => {
     }
 });
 
+app.get("/health", async (req, res) => {
+    try {
+        const queueStats = await getQueueStats();
+
+        const redisStatus = redisPublish.status === "ready";
+        const mongoStatus = mongoose.connection.readyState === 1;
+
+        const healthy =
+            redisStatus &&
+            mongoStatus &&
+            queueStats.status === "healthy";
+
+        return res.status(healthy ? 200 : 503).json({
+            status: healthy ? "healthy" : "degraded",
+            services: {
+                redis: redisStatus ? "connected" : "disconnected",
+                mongodb: mongoStatus ? "connected" : "disconnected",
+                queue: queueStats.status,
+            },
+            queue: queueStats.counts,
+        });
+
+    } catch (err) {
+        console.error("Health check error:", err.message);
+
+        return res.status(503).json({
+            status: "degraded",
+            error: "Health check failed"
+        });
+    }
+});
 
 app.post("/execute", auth, rateLimitMiddleware, queueBackpressure, async (req, res) => {
    
