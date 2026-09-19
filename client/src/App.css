@@ -419,3 +419,67 @@ body {
 .app-nav__logout .material-symbols-outlined {
   font-size: 18px;
 }
+
+
+.logout-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.logout-modal {
+  width: min(400px, calc(100% - 32px));
+  padding: 24px;
+  background: #111827;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+}
+
+.logout-modal h3 {
+  margin: 0 0 24px;
+  color: #e2e8f0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.logout-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.logout-modal__cancel,
+.logout-modal__confirm {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.logout-modal__cancel {
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #cbd5e1;
+}
+
+.logout-modal__cancel:hover {
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+.logout-modal__confirm {
+  border: 1px solid #38bdf8;
+  background: #38bdf8;
+  color: #0f172a;
+}
+
+.logout-modal__confirm:hover {
+  background: #7dd3fc;
+  border-color: #7dd3fc;
+}

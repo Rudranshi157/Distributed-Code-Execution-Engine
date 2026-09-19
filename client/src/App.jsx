@@ -4,17 +4,27 @@ import CodeEditor from "./components/CodeEditor";
 import InputBox from "./components/InputBox";
 import OutputBox from "./components/OutputBox";
 import { executeCode, submitCode } from "./services/executionApi";
-import { BrowserRouter, Routes, Route, Link, useNavigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Link,
+  Navigate,
+  useNavigate,
+} from "react-router-dom";
 import Dashboard from "./components/Dashboard";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import SubmissionDetails from "./components/SubmissionDetails";
 import { useWebSocket } from "./context/WebSocketContext";
+import Home from "./components/Home";
 
 function VerdictBadge({ verdict }) {
   const isPass = verdict === "Accepted" || verdict === "AC";
   return (
-    <span className={`verdict-badge ${isPass ? "verdict-badge--pass" : "verdict-badge--fail"}`}>
+    <span
+      className={`verdict-badge ${isPass ? "verdict-badge--pass" : "verdict-badge--fail"}`}
+    >
       {verdict}
     </span>
   );
@@ -22,31 +32,89 @@ function VerdictBadge({ verdict }) {
 
 function Navbar() {
   const navigate = useNavigate();
+  const isLoggedIn = Boolean(localStorage.getItem("token"));
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleLogout = () => {
+    setShowLogoutModal(false);
     localStorage.removeItem("token");
     navigate("/login");
   };
 
+ 
   return (
-    <nav className="app-nav">
-      <span className="app-nav__brand">Code Runner</span>
+    <>
+      <nav className="app-nav">
+        <Link to="/" className="app-nav__link app-nav__link--active">
+          <span className="app-nav__brand">Code Runner</span>
+        </Link>
 
-      <Link to="/" className="app-nav__link app-nav__link--active">
-        Code Runner
-      </Link>
+        <Link to="/" className="app-nav__link app-nav__link--active">
+          Home
+        </Link>
 
-      <Link to="/dashboard" className="app-nav__link">
-        Dashboard
-      </Link>
+        {isLoggedIn ? (
+          <>
+            <Link to="/runner" className="app-nav__link app-nav__link--active">
+              Workspace
+            </Link>
+            <Link to="/dashboard" className="app-nav__link">
+              Dashboard
+            </Link>
 
-      <button onClick={handleLogout} className="app-nav__logout">
-        <span className="material-symbols-outlined">logout</span>
-        Logout
-      </button>
-    </nav>
+            <button
+              onClick={() => setShowLogoutModal(true)}
+              className="app-nav__logout"
+            >
+              <span className="material-symbols-outlined">logout</span>
+              Logout
+            </button>
+          </>
+        ) : (
+          <>
+            <Link to="/login" className="app-nav__link">
+              Login
+            </Link>
+
+            <Link to="/register" className="app-nav__link">
+              Sign Up
+            </Link>
+          </>
+        )}
+      </nav>
+      {showLogoutModal && (
+        <div className="logout-modal-overlay">
+          <div className="logout-modal">
+            <h3>Are you sure you want to log out?</h3>
+
+            <div className="logout-modal__actions">
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="logout-modal__cancel"
+              >
+                Cancel
+              </button>
+
+              <button onClick={handleLogout} className="logout-modal__confirm">
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
+
+function ProtectedRoute({ children }) {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      return <Navigate to="/login" replace />;
+    }
+
+    return children;
+  }
 
 function App() {
   const [language, setLanguage] = useState("js");
@@ -60,9 +128,7 @@ function App() {
   const [problems, setProblems] = useState([]);
   const [mode, setMode] = useState("run");
 
-  const selectedProblem = problems.find(
-    (problem) => problem._id === problemId
-  );
+  const selectedProblem = problems.find((problem) => problem._id === problemId);
 
   const currentJobId = useRef(null);
   const { clientId, lastMessage } = useWebSocket();
@@ -167,6 +233,7 @@ function App() {
       setIsRunning(false);
     }
   };
+   
 
   return (
     <BrowserRouter>
@@ -179,11 +246,14 @@ function App() {
         <Routes>
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Home />} />
 
           <Route
-            path="/"
+            path="/runner"
             element={
               <>
+              <ProtectedRoute>
+              
                 {/* ---------------------------------------------- */}
                 {/* Page header + language select                  */}
                 {/* ---------------------------------------------- */}
@@ -256,7 +326,9 @@ function App() {
                     <section className="panel panel--output">
                       <div className="panel__header">
                         <h3 className="panel__title">Output</h3>
-                        {status && <span className="status-pill">{status}</span>}
+                        {status && (
+                          <span className="status-pill">{status}</span>
+                        )}
                       </div>
                       <div className="panel__editor panel__editor--fill">
                         <OutputBox output={output} status={status} />
@@ -333,19 +405,23 @@ function App() {
                               <VerdictBadge verdict={judgeResult.verdict} />
                             </div>
                             <span className="result__score">
-                              {judgeResult.passedTests} / {judgeResult.totalTests} tests passed
+                              {judgeResult.passedTests} /{" "}
+                              {judgeResult.totalTests} tests passed
                             </span>
                           </div>
 
                           <div>
-                            <h4 className="result__section-title">Public Tests</h4>
+                            <h4 className="result__section-title">
+                              Public Tests
+                            </h4>
                             <div className="test-list">
                               {judgeResult.testResults.map((test) => (
                                 <div key={test.test} className="test-row">
                                   <span>Test {test.test}</span>
                                   <span
                                     className={
-                                      test.status === "Passed" || test.status === "AC"
+                                      test.status === "Passed" ||
+                                      test.status === "AC"
                                         ? "test-row__status test-row__status--pass"
                                         : "test-row__status test-row__status--fail"
                                     }
@@ -361,9 +437,12 @@ function App() {
                           </div>
 
                           <div>
-                            <h4 className="result__section-title">Hidden Tests</h4>
+                            <h4 className="result__section-title">
+                              Hidden Tests
+                            </h4>
                             <div className="hidden-tests">
-                              {judgeResult.hiddenTests.passed} / {judgeResult.hiddenTests.total} passed
+                              {judgeResult.hiddenTests.passed} /{" "}
+                              {judgeResult.hiddenTests.total} passed
                             </div>
                           </div>
                         </div>
@@ -371,12 +450,27 @@ function App() {
                     </section>
                   </main>
                 )}
+                </ProtectedRoute>
               </>
             }
           />
 
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard/submission/:id" element={<SubmissionDetails />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/submission/:id"
+            element={
+              <ProtectedRoute>
+                <SubmissionDetails />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </div>
     </BrowserRouter>
