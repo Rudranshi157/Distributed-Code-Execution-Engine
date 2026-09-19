@@ -18,6 +18,21 @@ const { redisPublish } = require("./redis");
 
 app.use(cors());
 app.use(express.json({limit: "100kb"}));
+
+app.use((req, res, next) => {
+    const start = Date.now();
+
+    res.on("finish", () => {
+        const duration = Date.now() - start;
+
+        console.log(
+            `[API] ${req.method} ${req.originalUrl} → ${res.statusCode} (${duration}ms)`
+        );
+    });
+
+    next();
+});
+
 app.use("/auth", authRoutes);
 app.use("/api", submissionRoutes);
 app.use("/api/problems", problemRoutes);
